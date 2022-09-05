@@ -173,8 +173,14 @@ MCP2515::ERROR MCP2515::setNormalMode()
 
 MCP2515::ERROR MCP2515::setMode(const CANCTRL_REQOP_MODE mode)
 {
-    modifyRegister(MCP_CANCTRL, CANCTRL_REQOP, mode);
+    // Check for oneshot mode.
+    uint8_t mcpMode = osmFlag ? mode | CANCTRL_OSM : mode & ~(CANCTRL_OSM);
 
+    // Writing CANCTRL register.
+    modifyRegister(MCP_CANCTRL, CANCTRL_REQOP | CANCTRL_OSM, mcpMode);
+
+    // Checking from CANSTAT register only confirms the main working modes,
+    // and interrupts. Bit 4 is unimplemented.
     unsigned long endTime = millis() + 10;
     bool modeMatch = false;
     while (millis() < endTime) {
@@ -764,4 +770,44 @@ uint8_t MCP2515::errorCountRX(void)
 uint8_t MCP2515::errorCountTX(void)                             
 {
     return readRegister(MCP_TEC);
+}
+
+void MCP2515::enableOSM(void) {
+    osmFlag = true;
+}
+
+void MCP2515::disableOSM(void) {
+    osmFlag = false;
+}
+
+void MCP2515::abortTX(void) {
+    modifyRegister(MCP_CANCTRL, CANCTRL_ABAT, CANCTRL_ABAT);
+
+    bool wait = true;
+    unsigned long time = millis();
+    while (wait) {
+        delay(5);
+        TXBn txBuffers[N_TXBUFFERS] = {TXB0, TXB1, TXB2};
+        for (int i=0; i<N_TXBUFFERS; i++) {
+            const struct TXBn_REGS *txbuf = &TXB[txBuffers[i]];
+            uint8_t ctrlval = readRegister(txbuf->CTRL);
+            if ( (ctrlval & TXB_TXREQ) != 0 ) {
+                wait = true;
+            } 
+            else {
+                wait = false;
+            }
+        }
+        wait = (millis() - time) > 1000 ? false : wait;
+    }
+
+    modifyRegister(MCP_CANCTRL, CANCTRL_ABAT, 0);
+}
+
+void MCP2515::setOSM(void) {
+    modifyRegister(MCP_CANCTRL, CANCTRL_OSM, CANCTRL_OSM);
+}
+
+void MCP2515::unsetOSM(void) {
+    modifyRegister(MCP_CANCTRL, CANCTRL_OSM, 0);
 }

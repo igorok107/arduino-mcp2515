@@ -357,6 +357,7 @@ class MCP2515
             MCP_RXF2SIDL = 0x09,
             MCP_RXF2EID8 = 0x0A,
             MCP_RXF2EID0 = 0x0B,
+            MCP_TXRTSCTRL= 0x0D,
             MCP_CANSTAT  = 0x0E,
             MCP_CANCTRL  = 0x0F,
             MCP_RXF3SIDH = 0x10,
@@ -444,6 +445,7 @@ class MCP2515
 
         uint8_t SPICS;
         uint32_t SPI_CLOCK;
+        bool osmFlag = false;
 
     private:
 
@@ -491,6 +493,14 @@ class MCP2515
         void clearERRIF();
         uint8_t errorCountRX(void);
         uint8_t errorCountTX(void);
+
+        // ONE SHOT MODE
+        void enableOSM(void);
+        void disableOSM(void);
+
+        void abortTX(void);
+        void setOSM(void);
+        void unsetOSM(void);
 };
 
 #endif
